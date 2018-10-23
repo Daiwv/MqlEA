@@ -34,11 +34,11 @@ void OnDeinit(const int reason)
 double lastK = 50;
 double lastD = 50;
 input int kdj_period = 9;
-
-input double Lots = 0.1;
-input double OrdersCapacity=1;
-input double TakeProfit = 300;
-input double StopLoss = 300; 
+input double Lots = 1;
+input double TakeProfit = 400;
+input double StopLoss = 400; 
+input double buyBar = 80;
+input double sellBar = 40;
 input bool useStopLoss = false;
 int MagicNumber = 13297;
   
@@ -48,21 +48,27 @@ void OnTick()
          double li[9];
          double hi[9];
          double cn = iClose(_Symbol, PERIOD_M30, 0);
-         for (int i = 0; i < 9; i ++) {
-            li[i] = iHigh("BTC", PERIOD_H4, i+1);
-            hi[i] = iLow("BTC", PERIOD_H4, i+1);
+         for (int i = 0; i < kdj_period; i ++) {
+            hi[i] = iHigh("BTC", PERIOD_M30, i);
+            li[i] = iLow("BTC", PERIOD_M30, i);
          }
-         double hn = ArrayMaximum(hi);
-         double ln = ArrayMinimum(li);
+         double hn = hi[ArrayMaximum(hi)];
+         double ln = li[ArrayMinimum(li)];
 
          printf("Hn: %lf, Ln: %lf, Cn: %lf", hn, ln, cn);
          double RSV = (cn - ln) / (hn-ln) * 100;
          double K = 2 *lastK / 3 + RSV / 3;
          double D = 2 * lastD / 3 + K / 3;
          int ticket;
-         if (lastK < lastD && K > D && K > 80 && D > 80) {
+         if (lastK < lastD && K > D && D > buyBar) {
+                if (useStopLoss){
+                
+                 ticket = OrderSend(_Symbol, OP_BUY, Lots, Ask, 3,Ask-StopLoss,Ask+TakeProfit,"KDJ EA", MagicNumber,0, Green);
+                 }
+                 else {
                  ticket = OrderSend(_Symbol, OP_BUY, Lots, Ask, 3,0,Ask+TakeProfit,"KDJ EA", MagicNumber,0, Green);
-                       if(ticket>0)
+                 }
+                 if(ticket>0)    
                  {
                   if(OrderSelect(ticket,SELECT_BY_TICKET,MODE_TRADES))
                      Print("Buy at :",OrderOpenPrice(), "K: ", K, "K_:", lastK, "D: ", D, "D_:", lastD);
@@ -70,9 +76,12 @@ void OnTick()
                else
                   Print("Buy failed :",GetLastError());
           }
-         if (lastK > lastD && K < D && K < 30 && D < 30) {
+         if (lastK > lastD && K < D && D < sellBar) {
+                 if (useStopLoss)
+                 ticket=OrderSend(Symbol(),OP_SELL,Lots,Bid,3,Bid+StopLoss,Bid-TakeProfit,"KDJ EA",MagicNumber,0,Red);
+                 else 
                  ticket=OrderSend(Symbol(),OP_SELL,Lots,Bid,3,0,Bid-TakeProfit,"KDJ EA",MagicNumber,0,Red);
-                       if(ticket>0)
+           if(ticket>0)
            {
             if(OrderSelect(ticket,SELECT_BY_TICKET,MODE_TRADES))
                Print("Sell at :",OrderOpenPrice(), "K: ", K, "K_:", lastK, "D: ", D, "D_:", lastD);
